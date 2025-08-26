@@ -738,3 +738,141 @@ updateAllStatuses();
 renderCases();
 detectTouchBanner();
 updateApplyEsignEnabled();
+
+/* ---------- Image Gallery ---------- */
+const imageGallery = {
+  images: [], // Will be populated with IMG_*.png files
+  currentIndex: 0,
+  
+  init() {
+    // Generate list of training images (IMG_0060.png through IMG_0117.png)
+    for (let i = 60; i <= 117; i++) {
+      this.images.push(`IMG_${String(i).padStart(4, '0')}.png`);
+    }
+    
+    this.setupEventListeners();
+    this.generateThumbnails();
+  },
+  
+  setupEventListeners() {
+    // Gallery trigger button
+    const galleryBtn = document.querySelector('[data-action="gallery"]');
+    if (galleryBtn) {
+      galleryBtn.addEventListener('click', () => this.open());
+    }
+    
+    // Modal controls
+    $('#btn-gallery-close')?.addEventListener('click', () => this.close());
+    $('#gallery-prev')?.addEventListener('click', () => this.previous());
+    $('#gallery-next')?.addEventListener('click', () => this.next());
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (!$('#gallery-modal')?.hidden) {
+        if (e.key === 'Escape') this.close();
+        else if (e.key === 'ArrowLeft') this.previous();
+        else if (e.key === 'ArrowRight') this.next();
+      }
+    });
+    
+    // Close on backdrop click
+    $('#gallery-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'gallery-modal') this.close();
+    });
+  },
+  
+  generateThumbnails() {
+    const container = $('#gallery-thumbnails');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    this.images.forEach((imagePath, index) => {
+      const thumb = document.createElement('div');
+      thumb.style.cssText = `
+        border: 2px solid transparent;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+        background: #f3f4f6;
+        aspect-ratio: 16/11;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #6b7280;
+        transition: border-color 0.2s ease;
+      `;
+      
+      const img = document.createElement('img');
+      img.src = imagePath;
+      img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+      img.alt = `Training Image ${index + 1}`;
+      img.loading = 'lazy';
+      
+      // Handle image load error
+      img.onerror = () => {
+        thumb.textContent = `IMG ${index + 1}`;
+      };
+      
+      thumb.appendChild(img);
+      thumb.addEventListener('click', () => this.showImage(index));
+      container.appendChild(thumb);
+    });
+  },
+  
+  open() {
+    $('#gallery-modal').hidden = false;
+    this.showImage(0);
+  },
+  
+  close() {
+    $('#gallery-modal').hidden = true;
+  },
+  
+  showImage(index) {
+    if (index < 0 || index >= this.images.length) return;
+    
+    this.currentIndex = index;
+    const imagePath = this.images[index];
+    
+    // Update main image
+    const mainImg = $('#gallery-current-image');
+    if (mainImg) {
+      mainImg.src = imagePath;
+      mainImg.alt = `Training Image ${index + 1}`;
+    }
+    
+    // Update counter
+    const counter = $('#gallery-counter');
+    if (counter) {
+      counter.textContent = `${index + 1} of ${this.images.length}`;
+    }
+    
+    // Update thumbnail selection
+    const thumbnails = $$('#gallery-thumbnails > div');
+    thumbnails.forEach((thumb, i) => {
+      thumb.style.borderColor = i === index ? '#003366' : 'transparent';
+    });
+    
+    // Update navigation buttons
+    const prevBtn = $('#gallery-prev');
+    const nextBtn = $('#gallery-next');
+    if (prevBtn) prevBtn.disabled = index === 0;
+    if (nextBtn) nextBtn.disabled = index === this.images.length - 1;
+  },
+  
+  previous() {
+    if (this.currentIndex > 0) {
+      this.showImage(this.currentIndex - 1);
+    }
+  },
+  
+  next() {
+    if (this.currentIndex < this.images.length - 1) {
+      this.showImage(this.currentIndex + 1);
+    }
+  }
+};
+
+// Initialize image gallery
+imageGallery.init();
