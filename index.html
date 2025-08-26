@@ -187,7 +187,7 @@
               <div class="field"><label>Last <b class="req">*</b></label><input id="prod-last" required /></div>
 
               <div class="field"><label>Date of Birth</label><input id="prod-dob" placeholder="MM/DD/YYYY" class="mask-dob" /></div>
-              <div class="field"><label>Last 4 of SSN</label><input id="prod-ssn4" maxlength="4" class="mask-4pin" /></div>
+              <div class="field"><label>Last 4 of SSN</label><input id="prod-ssn4" maxlength="4" class="mask-4pin" inputmode="numeric" /></div>
               <div class="field"><label>Producer ID Number</label><input id="prod-id" /></div>
 
               <div class="field"><label>State License Number</label><input id="prod-license" /></div>
@@ -539,7 +539,7 @@
               <div class="grid">
                 <div class="field span-3"><label>What is your annual income?</label>
                   <select id="annual-income">
-                    <option>Please select...</option>
+                    <option>Please select…</option>
                     <option>Under $50,000</option>
                     <option>$50,000 - $100,000</option>
                     <option>$100,000 - $200,000</option>
@@ -549,7 +549,7 @@
                 </div>
                 <div class="field span-3"><label>What is your net worth?</label>
                   <select id="net-worth">
-                    <option>Please select...</option>
+                    <option>Please select…</option>
                     <option>Under $100,000</option>
                     <option>$100,000 - $500,000</option>
                     <option>$500,000 - $1,000,000</option>
@@ -644,8 +644,8 @@
               <div class="field"><label>Type of Account</label><select id="acct-type"><option>Checking</option><option>Savings</option></select></div>
 
               <div class="field"><label>Name(s) on Account</label><input id="acct-name" /></div>
-              <div class="field"><label>Routing Number</label><input id="acct-routing" class="mask-routing" maxlength="9" /></div>
-              <div class="field"><label>Account Number</label><input id="acct-number" class="mask-account" maxlength="17" /></div>
+              <div class="field"><label>Routing Number</label><input id="acct-routing" class="mask-routing" maxlength="9" inputmode="numeric" /></div>
+              <div class="field"><label>Account Number</label><input id="acct-number" class="mask-account" maxlength="17" inputmode="numeric" /></div>
 
               <div class="field span-2"><label>Financial Institution</label><input id="acct-bank" /></div>
             </div>
@@ -720,7 +720,7 @@
                 </div>
               </div>
               <div class="field"><label>Cell Phone Number</label><input id="sig-phone" class="mask-phone" /></div>
-              <div class="field"><label>4 Digit PIN</label><input id="sig-pin" class="mask-4pin" maxlength="4" placeholder="1234" /></div>
+              <div class="field"><label>4 Digit PIN</label><input id="sig-pin" class="mask-4pin" maxlength="4" placeholder="1234" inputmode="numeric" /></div>
             </div>
             <div class="note-banner">Please inform the signer they will receive a text from 1‑844‑307‑6442 with a link to sign their documents.</div>
             <div class="actions">
@@ -758,7 +758,7 @@
             <h2>Apply eSignature – Producer</h2>
             <div class="note-banner" id="touch-detect" hidden>We detected a touch‑enabled device. You may sign with your finger, or apply a click‑to‑sign.</div>
             <div class="grid">
-              <div class="field"><label>Signed at City</label><input id="signed-city" placeholder="Pittsburgh" /></div>
+              <div class="field"><label>Signed at City</label><input id="signed-city" placeholder="City name" /></div>
               <div class="field"><label>Signed in State</label><select id="signed-state"></select></div>
               <div class="field"><label>Use touch signature?</label>
                 <div class="radios">
