@@ -722,6 +722,8 @@ function restoreState(){
         if (el.type==='radio' || el.type==='checkbox') el.checked = !!val;
         else el.value = val;
       });
+      // Apply masks to restored field values for professional appearance
+      applyMasksToAllFields();
     }
     if (payload?.state) {
       Object.assign(state, payload.state);
@@ -729,6 +731,17 @@ function restoreState(){
       renderBeneTable();
     }
   }catch{}
+}
+
+/* ---------- Apply masks to all fields (for state restoration) ---------- */
+function applyMasksToAllFields() {
+  const maskedFields = $$('.mask-ssn, .mask-phone, .mask-dob, .mask-4pin, .mask-routing, .mask-account, .mask-money');
+  maskedFields.forEach(field => {
+    if (field.value) {
+      // Trigger input event to apply mask
+      field.dispatchEvent(new Event('input', {bubbles: true}));
+    }
+  });
 }
 
 /* ---------- Initial set ---------- */
