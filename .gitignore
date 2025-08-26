@@ -1,0 +1,11 @@
+# Ignore IMG_* files to prevent accidental commits of similar image files
+IMG_*.png
+IMG_*.jpg
+IMG_*.jpeg
+
+# Common image files that might be accidentally added
+*.tmp
+*.log
+*~
+.DS_Store
+Thumbs.db
