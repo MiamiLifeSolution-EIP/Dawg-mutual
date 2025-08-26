@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Mutual of Omaha - Whole Life Express Application</title>
+  <title>DAWGCHECK - Whole Life Training Module</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <img src="assets/icon-192.png" class="brand__logo" alt="Mutual of Omaha">
-      <div class="brand__text"><strong>Mutual of Omaha</strong><span>Whole Life Express</span></div>
+      <img src="assets/dawgcheck-logo.png" class="brand__logo" alt="DAWGCHECK">
+      <div class="brand__text"><strong>DAWGCHECK</strong><span>Whole Life Training</span></div>
     </div>
     <nav class="topnav">
       <span class="welcome"><span>Whole Life Insurance</span></span>
@@ -21,9 +21,9 @@
     <div class="login-container">
       <div class="login-card">
         <div class="login-header">
-          <img src="assets/icon-192.png" alt="Mutual of Omaha" class="login-logo" />
-          <h1>Whole Life Express Application</h1>
-          <p>Permanent protection with guaranteed cash value growth</p>
+          <img src="assets/dawgcheck-logo.png" alt="DAWGCHECK" class="login-logo" />
+          <h1>Whole Life Training Module</h1>
+          <p>Training simulation for permanent protection with guaranteed cash value growth</p>
         </div>
         
         <div class="product-info">
@@ -48,25 +48,25 @@
             <input type="text" id="wl-last" required />
           </div>
           <button type="button" id="btn-wl-begin" class="btn btn--primary btn--large">
-            Begin Whole Life Application
+            Begin Whole Life Training
           </button>
         </form>
         
         <div class="login-footer">
-          <p>Mutual of Omaha Whole Life - Lifetime protection with guaranteed benefits</p>
+          <p>DAWGCHECK Whole Life Training - Interactive simulation for lifetime protection scenarios</p>
         </div>
       </div>
     </div>
   </div>
   
-  <footer class="footer">© <span id="year">2025</span> Mutual of Omaha Insurance Company</footer>
+  <footer class="footer">© <span id="year">2025</span> DAWGCHECK Training Systems</footer>
   
   <script>
     document.getElementById('btn-wl-begin')?.addEventListener('click', () => {
       const first = document.getElementById('wl-first')?.value.trim();
       const last = document.getElementById('wl-last')?.value.trim();
       if (first && last) {
-        sessionStorage.setItem('selectedProduct', 'Whole Life Express Application');
+        sessionStorage.setItem('selectedProduct', 'Whole Life Training Module');
         sessionStorage.setItem('applicantName', `${first} ${last}`);
         window.location.href = 'index.html';
       }

@@ -1,6 +1,6 @@
 {
-  "name": "Mutual of Omaha Application Portal",
-  "short_name": "MutualApp",
+  "name": "DAWGCHECK Training Simulator",
+  "short_name": "DAWGCHECK",
   "start_url": "./",
   "display": "standalone",
   "orientation": "landscape",

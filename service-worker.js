@@ -1,5 +1,5 @@
 // DAWGCHECK Training Simulator – Service Worker (fixed asset names)
-const CACHE = 'dawgcheck-cache-v4';
+const CACHE = 'dawgcheck-cache-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,8 @@ const ASSETS = [
   './app.js',
   './manifest.json',
   './assets/icon-192.png',
-  './assets/icon-512.png'
+  './assets/icon-512.png',
+  './assets/dawgcheck-logo.png'
 ];
 
 self.addEventListener('install', (event)=>{
