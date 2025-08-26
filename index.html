@@ -4,9 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1b4f72" />
+  <!-- Cache control meta tags for fresh content -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>DAWGCHECK Training Simulator</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="styles.css?v=2025.08.25.2" />
+  <link rel="stylesheet" href="styles.css?v=2025.08.25.3" />
   <style>
     /* Lightweight styles to support new modal/drawer elements */
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999}
@@ -170,6 +174,7 @@
                   <button type="button" role="menuitem" data-action="duplicate">Duplicate Case</button>
                   <button type="button" role="menuitem" data-action="delete">Delete Case</button>
                   <button type="button" role="menuitem" data-action="export">Export PDF</button>
+                  <button type="button" role="menuitem" data-action="clear-cache">Clear Cache & Reload</button>
                 </div>
               </div>
             </div>
@@ -820,10 +825,37 @@
 
   <footer class="footer">© <span id="year"></span> DAWGCHECK Training Systems</footer>
 
-  <script src="app.js?v=2025.08.25.1"></script>
+  <script src="app.js?v=2025.08.25.2"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+      navigator.serviceWorker.register('service-worker.js').then(registration => {
+        console.log('Service Worker registered successfully');
+        
+        // Add manual cache clear function
+        window.clearAppCache = () => {
+          if (registration.active) {
+            const messageChannel = new MessageChannel();
+            messageChannel.port1.onmessage = function(event) {
+              if (event.data.success) {
+                console.log('Cache cleared successfully');
+                // Force reload to get fresh content
+                window.location.reload(true);
+              }
+            };
+            registration.active.postMessage({type: 'CLEAR_CACHE'}, [messageChannel.port2]);
+          }
+        };
+        
+        // Auto-clear cache on app startup to ensure fresh content
+        registration.addEventListener('updatefound', () => {
+          console.log('New version available, clearing cache...');
+          if (window.clearAppCache) {
+            window.clearAppCache();
+          }
+        });
+      }).catch(error => {
+        console.log('Service Worker registration failed:', error);
+      });
     }
   </script>
 </body>

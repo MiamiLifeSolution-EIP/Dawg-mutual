@@ -640,6 +640,35 @@ $('#btn-case-actions')?.addEventListener('click', ()=>{
   const menu = $('#case-actions-menu');
   menu.hidden = !menu.hidden;
 });
+
+// Handle menu item clicks
+$('#case-actions-menu')?.addEventListener('click', (e) => {
+  if (e.target.role === 'menuitem') {
+    const action = e.target.getAttribute('data-action');
+    const menu = $('#case-actions-menu');
+    if (menu) menu.hidden = true;
+    
+    switch (action) {
+      case 'duplicate':
+        alert('Duplicate Case functionality would be implemented here');
+        break;
+      case 'delete':
+        if (confirm('Are you sure you want to delete this case?')) {
+          alert('Delete Case functionality would be implemented here');
+        }
+        break;
+      case 'export':
+        window.print();
+        break;
+      case 'clear-cache':
+        if (confirm('This will clear the application cache and reload the page. Continue?')) {
+          window.clearAppCacheAndReload();
+        }
+        break;
+    }
+  }
+});
+
 document.addEventListener('click', (e)=>{
   if (!e.target.closest('#btn-case-actions') && !e.target.closest('#case-actions-menu')) {
     const menu = $('#case-actions-menu'); if (menu) menu.hidden = true;
@@ -793,6 +822,35 @@ function initializeApp() {
   const drawer = document.getElementById('cases-drawer');
   if (modal) modal.hidden = true;
   if (drawer) drawer.hidden = true;
+  
+  // Add cache clearing functionality
+  window.clearAppCacheAndReload = function() {
+    if ('serviceWorker' in navigator && window.clearAppCache) {
+      window.clearAppCache();
+    } else {
+      // Fallback: clear browser cache and reload
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          Promise.all(keys.map(key => caches.delete(key))).then(() => {
+            window.location.reload(true);
+          });
+        });
+      } else {
+        window.location.reload(true);
+      }
+    }
+  };
+  
+  // Add cache-busting to dynamic requests
+  const originalFetch = window.fetch;
+  window.fetch = function(resource, options = {}) {
+    if (typeof resource === 'string' && resource.includes('./')) {
+      const url = new URL(resource, window.location.origin);
+      url.searchParams.set('_cb', Date.now().toString());
+      resource = url.toString();
+    }
+    return originalFetch(resource, options);
+  };
 }
 
 // Initialize when DOM is ready
