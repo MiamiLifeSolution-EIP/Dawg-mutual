@@ -738,3 +738,17 @@ updateAllStatuses();
 renderCases();
 detectTouchBanner();
 updateApplyEsignEnabled();
+
+// Ensure modals are hidden initially
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('notes-modal');
+  const drawer = document.getElementById('cases-drawer');
+  if (modal) modal.hidden = true;
+  if (drawer) drawer.hidden = true;
+});
+
+// Also hide immediately in case DOMContentLoaded already fired
+const modal = document.getElementById('notes-modal');
+const drawer = document.getElementById('cases-drawer');
+if (modal) modal.hidden = true;
+if (drawer) drawer.hidden = true;
