@@ -15,6 +15,28 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
 /* ---------- Simple View Router (Login -> App) ---------- */
 (function initViews(){
+  // CRITICAL: Force-hide all modals and drawers on startup to prevent blocking login view
+  // This ensures the Case Notes modal never appears by default, regardless of any residual state
+  const notesModal = $('#notes-modal');
+  const casesDrawer = $('#cases-drawer');
+  
+  if (notesModal) notesModal.hidden = true;
+  if (casesDrawer) casesDrawer.hidden = true;
+  
+  // Handle emergency reset parameter (?reset=1) to clear persistent state
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('reset') === '1') {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('Emergency reset: All persistent state cleared');
+      // Remove reset param from URL to prevent repeated clearing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (e) {
+      console.warn('Could not clear storage:', e);
+    }
+  }
+
   const loginView = document.querySelector('[data-view="login"]');
   const appView = document.querySelector('[data-view="home"]');
   const loginBtn = $('#btn-login');
@@ -25,6 +47,14 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
     if (welcomeEl) welcomeEl.textContent = `Welcome ${name}`;
     if (loginView) loginView.hidden = true;
     if (appView) appView.hidden = false;
+    
+    // CRITICAL: Always hide notes modal when entering app view to prevent startup blocking
+    // This ensures modal state is clean regardless of any restored state or prior usage
+    const notesModal = $('#notes-modal');
+    const casesDrawer = $('#cases-drawer');
+    if (notesModal) notesModal.hidden = true;
+    if (casesDrawer) casesDrawer.hidden = true;
+    
     restoreState();
     setActiveStep(state.currentIndex || 0);
     updateAllStatuses();
