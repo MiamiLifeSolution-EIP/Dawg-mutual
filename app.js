@@ -13,6 +13,38 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
+/* ---------- Startup Initialization ---------- */
+(function startupInit(){
+  // Handle ?reset=1 parameter to clear persistent state
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('reset') === '1') {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('Persistent state cleared via ?reset=1');
+    } catch(e) {
+      console.warn('Failed to clear storage:', e);
+    }
+  }
+
+  // Ensure clean startup state - forcibly hide modal and show only login
+  document.addEventListener('DOMContentLoaded', () => {
+    const notesModal = $('#notes-modal');
+    const loginView = document.querySelector('[data-view="login"]');
+    const appView = document.querySelector('[data-view="home"]');
+    
+    // Forcibly hide the notes modal
+    if (notesModal) {
+      notesModal.hidden = true;
+      notesModal.style.display = 'none';
+    }
+    
+    // Ensure only login view is visible on startup
+    if (loginView) loginView.hidden = false;
+    if (appView) appView.hidden = true;
+  });
+})();
+
 /* ---------- Simple View Router (Login -> App) ---------- */
 (function initViews(){
   const loginView = document.querySelector('[data-view="login"]');
@@ -23,6 +55,14 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
     const name = [first, last].filter(Boolean).join(' ') || 'User';
     const welcomeEl = $('#welcome-text');
     if (welcomeEl) welcomeEl.textContent = `Welcome ${name}`;
+    
+    // Always hide notes modal when moving to app view
+    const notesModal = $('#notes-modal');
+    if (notesModal) {
+      notesModal.hidden = true;
+      notesModal.style.display = 'none';
+    }
+    
     if (loginView) loginView.hidden = true;
     if (appView) appView.hidden = false;
     restoreState();
@@ -41,7 +81,13 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
       gotoApp(first, last);
     });
   } else {
-    gotoApp('', '');
+    // Only auto-navigate to app if there's existing session data or specific conditions
+    // Otherwise, stay on login screen for clean startup
+    const hasExistingSession = localStorage.getItem('dawgcheck-app-state-v2');
+    if (hasExistingSession) {
+      gotoApp('', '');
+    }
+    // If no existing session, login view remains visible by default
   }
 })();
 
@@ -615,12 +661,26 @@ $('#btn-view-forms')?.addEventListener('click', ()=>{ window.print(); });
 
 $('#btn-case-notes')?.addEventListener('click', ()=>{
   $('#notes-text').value = state.notes || '';
-  $('#notes-modal').hidden = false;
+  const modal = $('#notes-modal');
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = '';
+  }
 });
-$('#btn-notes-cancel')?.addEventListener('click', ()=>{ $('#notes-modal').hidden = true; });
+$('#btn-notes-cancel')?.addEventListener('click', ()=>{ 
+  const modal = $('#notes-modal');
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = 'none';
+  }
+});
 $('#btn-notes-save')?.addEventListener('click', ()=>{
   state.notes = $('#notes-text').value;
-  $('#notes-modal').hidden = true;
+  const modal = $('#notes-modal');
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = 'none';
+  }
   saveState();
 });
 $('#btn-notes-insert')?.addEventListener('click', ()=>{
