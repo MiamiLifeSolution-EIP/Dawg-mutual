@@ -7,6 +7,28 @@
   <title>Mutual of Omaha Application</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css?v=2025.08.25.1" />
+  <style>
+    /* Lightweight styles to support new modal/drawer elements */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .modal-card{background:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.2);width:min(700px,92vw);max-height:80vh;display:flex;flex-direction:column}
+    .modal-head{padding:14px 16px;border-bottom:1px solid #e5e7eb;font-weight:600}
+    .modal-body{padding:14px 16px;overflow:auto}
+    .modal-foot{padding:12px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end}
+    .notes-text{width:100%;height:220px}
+    .small-muted{color:#6b7280;font-size:.875rem}
+    .drawer{position:fixed;right:0;top:0;height:100vh;width:min(560px,95vw);background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.12);z-index:9998;display:flex;flex-direction:column}
+    .drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #e5e7eb;font-weight:600}
+    .drawer-body{overflow:auto;padding:10px 12px}
+    .case-row{border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin:8px 0;display:grid;grid-template-columns:1fr auto;gap:6px}
+    .badge{font-size:.75rem;border-radius:999px;padding:2px 8px;display:inline-block}
+    .badge.warn{background:#fde68a;color:#92400e}
+    .badge.info{background:#dbeafe;color:#1e40af}
+    .badge.ok{background:#d1fae5;color:#065f46}
+    .trending{margin-top:6px;padding:8px 10px;border-radius:8px;border:1px dashed #f59e0b;background:#fffbeb;color:#92400e;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+    .terms-box{max-height:240px;overflow:auto;border:1px solid #e5e7eb;border-radius:6px;padding:10px}
+    .note-banner{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:8px 10px;border-radius:6px;margin:6px 0}
+    .warn-banner{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;padding:8px 10px;border-radius:6px;margin:6px 0}
+  </style>
 </head>
 <body>
   <!-- Top App Bar -->
@@ -246,20 +268,20 @@
           <section class="step-view" data-step="hipaa-lock" hidden>
             <h2>HIPAA Signature and Lock Data</h2>
             <div id="hipaa-lock-panel" class="panel">
-              <div class="alert success" id="hipaa-lock-msg" hidden>The data has been locked.</div>
-              <div class="alert warn" id="hipaa-unlocked-msg">Your data has not been locked yet. Lock to continue to signature.</div>
+              <div class="alert success" id="hipaa-lock-msg" hidden>The data has been locked!</div>
+              <div class="alert warn" id="hipaa-unlocked-msg">Once you click Lock Data, you will no longer be able to make updates to information already entered. This information will remain available for 10 days after no activity.</div>
               <div class="actions">
                 <button type="button" class="btn btn--primary" id="btn-lock-hipaa">Lock Data</button>
                 <button type="button" class="btn btn--ghost" id="btn-unlock-hipaa" hidden>Unlock Application Data and Cancel Signature Process</button>
               </div>
-              <p class="note">This information will be securely stored and processed according to Mutual of Omaha privacy policies.</p>
+              <p class="note">To begin underwriting, HIPAA authorization is required. Client may sign present or via email/text.</p>
             </div>
           </section>
 
           <!-- 5 HIPAA Signature Method -->
           <section class="step-view" data-step="hipaa-method" hidden>
             <h2>HIPAA Signature Method</h2>
-            <div class="alert info">By verifying/entering the cell phone number below, an automated text will be sent with a link to complete HIPAA consent.</div>
+            <div class="alert info">Specify the method to collect HIPAA consent.</div>
             <div class="grid">
               <div class="field"><label>Signer Presence</label>
                 <div class="radios">
@@ -276,6 +298,7 @@
               <div class="field"><label>Cell Phone Number</label><input id="hipaa-phone" class="mask-phone" placeholder="(555) 555‑1234" /></div>
               <div class="field"><label>4 Digit PIN</label><input id="hipaa-pin" class="mask-4pin" placeholder="1234" maxlength="4" inputmode="numeric" /></div>
             </div>
+            <div class="note-banner">Please inform the signer they will receive a text from 1‑844‑307‑6442 with a link to sign.</div>
             <div class="actions">
               <button type="button" class="btn" id="btn-hipaa-send">Send HIPAA Signature Link</button>
               <span id="hipaa-send-status" class="muted"></span>
@@ -376,6 +399,20 @@
               </div>
               <div class="field"><label>Max Coverage Allowed (based on existing)</label><input id="max-coverage" value="$230,000" readonly /></div>
               <div class="field"><label>Amount of Insurance Applied For <b class="req">*</b></label><input id="face-amount" class="mask-money" placeholder="$200,000" required /></div>
+
+              <div class="field"><label>Risk / Rate Class Applied For</label>
+                <select id="risk-class">
+                  <option>Standard</option>
+                  <option>Preferred</option>
+                  <option>Substandard</option>
+                </select>
+              </div>
+              <div class="field"><label>Tobacco Status</label>
+                <select id="tobacco-status">
+                  <option>Nontobacco</option>
+                  <option>Tobacco</option>
+                </select>
+              </div>
             </div>
           </section>
 
@@ -399,6 +436,7 @@
               <div class="field span-3">
                 <label>Products</label>
                 <select id="pre-products" size="5"></select>
+                <div id="pre-trending" class="trending" hidden>FAVORABLE</div>
               </div>
             </div>
           </section>
@@ -597,8 +635,9 @@
           <!-- 13 Automatic Bill Pay -->
           <section class="step-view" data-step="billing" hidden>
             <h2>Automatic Bill Pay</h2>
+            <div class="note-banner">If the scheduled withdrawal date lands on a holiday or weekend, the payment will process on the following business day.</div>
             <div class="grid">
-              <div class="field"><label>Who will be the payor?</label><input id="bill-payor" placeholder="Valerie brimfield" /></div>
+              <div class="field"><label>Who will be the payor?</label><input id="bill-payor" /></div>
               <div class="field"><label>Account Holder SSN</label><input id="bill-ssn" class="mask-ssn" maxlength="11" /></div>
               <div class="field"><label>Type of Account</label><select id="acct-type"><option>Checking</option><option>Savings</option></select></div>
 
@@ -606,7 +645,22 @@
               <div class="field"><label>Routing Number</label><input id="acct-routing" class="mask-routing" maxlength="9" /></div>
               <div class="field"><label>Account Number</label><input id="acct-number" class="mask-account" maxlength="17" /></div>
 
-              <div class="field span-2"><label>Financial Institution</label><input id="acct-bank" placeholder="Your Federal Credit Union" /></div>
+              <div class="field span-2"><label>Financial Institution</label><input id="acct-bank" /></div>
+            </div>
+
+            <div class="subsection">
+              <h3>Initial Premium</h3>
+              <div class="grid">
+                <div class="field"><label>Amount Quoted</label><input id="amount-quoted" readonly placeholder="$0.00" /></div>
+                <div class="field span-2"><label>Select one option for Initial Monthly Premium Payment</label>
+                  <select id="initial-pay-option">
+                    <option>Draft initial premium on or after a specific date</option>
+                    <option>Draft initial premium upon policy issue</option>
+                  </select>
+                </div>
+                <div class="field"><label>Withdraw the initial premium on or after</label><input id="initial-date" placeholder="MM/DD/YYYY" class="mask-dob" /></div>
+              </div>
+              <div class="warn-banner">If policy issue is after date selected, premium will be withdrawn on the policy issue date or receipt of delivery requirements.</div>
             </div>
           </section>
 
@@ -614,7 +668,7 @@
           <section class="step-view" data-step="validate-lock" hidden>
             <h2>Validate and Lock Data</h2>
             <div class="alert success" id="lock-status" hidden>The application has been locked!</div>
-            <div class="alert info" id="lock-instructions">Your application has been digitally locked to protect client data during the signature process.</div>
+            <div class="alert info" id="lock-instructions">Your application has been digitally locked to protect client data from alteration during the signature process. This information will remain on iPipeline for 10 days after no activity.</div>
             <div class="actions">
               <button type="button" class="btn btn--primary" id="btn-lock-app">Lock</button>
               <button type="button" class="btn btn--ghost" id="btn-unlock-app" hidden>Unlock Application Data and Cancel Signature Process</button>
@@ -666,6 +720,7 @@
               <div class="field"><label>Cell Phone Number</label><input id="sig-phone" class="mask-phone" /></div>
               <div class="field"><label>4 Digit PIN</label><input id="sig-pin" class="mask-4pin" maxlength="4" placeholder="1234" /></div>
             </div>
+            <div class="note-banner">Please inform the signer they will receive a text from 1‑844‑307‑6442 with a link to sign their documents.</div>
             <div class="actions">
               <button type="button" class="btn" id="btn-send-sign">Send Signature Links</button>
               <span id="sig-send-status" class="muted"></span>
@@ -685,9 +740,13 @@
           <!-- 19 Welcome Consent – Producer -->
           <section class="step-view" data-step="welcome-consent" hidden>
             <h2>Welcome Consent – Producer</h2>
-            <div class="grid">
+            <div class="terms-box">
+              <p><strong>Terms of Use</strong> — By using this application, you agree to receive disclosures electronically and provide electronic signatures where applicable. Review the Terms of Use and eSignature Consent prior to proceeding.</p>
+              <p class="small-muted">Disclaimer: Materials are provided “AS IS” without warranties of any kind...</p>
+            </div>
+            <div class="grid" style="margin-top:10px">
               <div class="field span-3">
-                <label><input type="checkbox" id="welcome-consent-check" /> I acknowledge and consent to the electronic signature process.</label>
+                <label><input type="checkbox" id="welcome-consent-check" /> I have reviewed the application and Terms of Use and read each of the pages that are to be eSigned.</label>
               </div>
             </div>
           </section>
@@ -695,7 +754,9 @@
           <!-- 20 Apply eSignature – Producer -->
           <section class="step-view" data-step="apply-esign-producer" hidden>
             <h2>Apply eSignature – Producer</h2>
+            <div class="note-banner" id="touch-detect" hidden>We detected a touch‑enabled device. You may sign with your finger, or apply a click‑to‑sign.</div>
             <div class="grid">
+              <div class="field"><label>Signed at City</label><input id="signed-city" placeholder="Pittsburgh" /></div>
               <div class="field"><label>Signed in State</label><select id="signed-state"></select></div>
               <div class="field"><label>Use touch signature?</label>
                 <div class="radios">
@@ -705,10 +766,11 @@
               </div>
               <div class="field span-3">
                 <div class="actions">
-                  <button type="button" class="btn" id="btn-apply-esign">Apply eSignature</button>
+                  <button type="button" class="btn" id="btn-apply-esign" disabled>Apply eSignature</button>
                   <button type="button" class="btn btn--ghost" id="btn-print-app">Print Signed Application</button>
                   <button type="button" class="btn btn--primary" id="btn-submit-app">Submit Application</button>
                 </div>
+                <div class="small-muted">You must confirm Welcome Consent and Signed at City to enable Apply eSignature.</div>
               </div>
               <div class="field span-3">
                 <div id="submit-messages" class="stack"></div>
@@ -724,6 +786,33 @@
           </div>
         </form>
       </main>
+    </div>
+  </div>
+
+  <!-- Case Notes Modal -->
+  <div id="notes-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="notes-title">
+      <div class="modal-head" id="notes-title">Case Notes</div>
+      <div class="modal-body">
+        <p class="small-muted">This information is for Agent Use Only and will not print in the report.</p>
+        <textarea id="notes-text" class="notes-text" placeholder="Enter case notes..."></textarea>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" id="btn-notes-insert">Insert Date and Time</button>
+        <button type="button" class="btn btn--primary" id="btn-notes-save">OK</button>
+        <button type="button" class="btn btn--ghost" id="btn-notes-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Cases Drawer -->
+  <div id="cases-drawer" class="drawer" hidden>
+    <div class="drawer-head">
+      <span>My Cases</span>
+      <button id="btn-close-cases" class="btn btn--ghost">Close</button>
+    </div>
+    <div class="drawer-body">
+      <div id="cases-list"></div>
     </div>
   </div>
 
