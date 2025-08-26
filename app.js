@@ -13,38 +13,6 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
-/* ---------- Simple View Router (Login -> App) ---------- */
-(function initViews(){
-  const loginView = document.querySelector('[data-view="login"]');
-  const appView = document.querySelector('[data-view="home"]');
-  const loginBtn = $('#btn-login');
-
-  function gotoApp(first, last){
-    const name = [first, last].filter(Boolean).join(' ') || 'User';
-    const welcomeEl = $('#welcome-text');
-    if (welcomeEl) welcomeEl.textContent = `Welcome ${name}`;
-    if (loginView) loginView.hidden = true;
-    if (appView) appView.hidden = false;
-    restoreState();
-    setActiveStep(state.currentIndex || 0);
-    updateAllStatuses();
-    renderCases();
-    detectTouchBanner();
-    syncPlanSelectionsToSummary();
-    updateApplyEsignEnabled();
-  }
-
-  if (loginBtn) {
-    loginBtn.addEventListener('click', () => {
-      const first = ($('#login-first')?.value || '').trim();
-      const last  = ($('#login-last')?.value || '').trim();
-      gotoApp(first, last);
-    });
-  } else {
-    gotoApp('', '');
-  }
-})();
-
 /* ---------- State ---------- */
 const state = {
   stepOrder: [
@@ -64,6 +32,45 @@ const state = {
   cases: [],
   notes: ''
 };
+
+/* ---------- Simple View Router (Login -> App) ---------- */
+(function initViews(){
+  const loginView = document.querySelector('[data-view="login"]');
+  const appView = document.querySelector('[data-view="home"]');
+  const loginBtn = $('#btn-login');
+
+  function gotoApp(first, last){
+    const name = [first, last].filter(Boolean).join(' ') || 'User';
+    const welcomeEl = $('#welcome-text');
+    if (welcomeEl) welcomeEl.textContent = `Welcome ${name}`;
+    if (loginView) loginView.hidden = true;
+    if (appView) appView.hidden = false;
+    restoreState();
+    initStepper(); // Initialize stepper before calling setActiveStep
+    initEventListeners(); // Initialize event listeners
+    setActiveStep(state.currentIndex || 0);
+    updateAllStatuses();
+    renderCases();
+    detectTouchBanner();
+    syncPlanSelectionsToSummary();
+    updateApplyEsignEnabled();
+  }
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      const first = ($('#login-first')?.value || '').trim();
+      const last  = ($('#login-last')?.value || '').trim();
+      gotoApp(first, last);
+    });
+  } else {
+    // Defer initialization until DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => gotoApp('', ''));
+    } else {
+      gotoApp('', '');
+    }
+  }
+})();
 
 /* ---------- Helpers ---------- */
 const STATES = [
@@ -123,11 +130,12 @@ document.addEventListener('input', (e)=>{
 });
 
 /* ---------- Stepper Navigation ---------- */
-const stepper = $('#step-list');
-const stepViews = $$('.step-view');
 function stepKeyAt(i){ return state.stepOrder[i]; }
 
 function setActiveStep(i){
+  const stepper = $('#step-list');
+  if (!stepper) return; // Guard against DOM not being ready
+  
   state.currentIndex = i;
   $$('.step', stepper).forEach((li, idx)=>{
     li.classList.toggle('is-active', idx===i);
@@ -137,6 +145,7 @@ function setActiveStep(i){
     const dot = $('.dot', li);
     if (dot) dot.textContent = idx<i ? '✓' : String(idx+1);
   });
+  const stepViews = $$('.step-view');
   stepViews.forEach(sec=>{
     const show = sec.dataset.step === stepKeyAt(i);
     sec.hidden = !show;
@@ -158,31 +167,47 @@ function setActiveStep(i){
     updateApplyEsignEnabled();
   }
 }
-setActiveStep(0);
 
-stepper.addEventListener('click', (e)=>{
-  const li = e.target.closest('.step');
-  if(!li) return;
-  const idx = $$('.step', stepper).indexOf(li);
-  if (idx<=state.currentIndex && !li.classList.contains('is-locked')) setActiveStep(idx);
-});
-stepper.addEventListener('keydown', (e)=>{
-  if (!e.target.classList.contains('step')) return;
-  const steps = $$('.step', stepper);
-  const i = steps.indexOf(e.target);
-  if (e.key==='ArrowDown' && i<steps.length-1) { steps[i+1].focus(); e.preventDefault(); }
-  if (e.key==='ArrowUp' && i>0) { steps[i-1].focus(); e.preventDefault(); }
-  if ((e.key==='Enter'||e.key===' ') && i<=state.currentIndex) { setActiveStep(i); e.preventDefault(); }
-});
+function initStepper(){
+  const stepper = $('#step-list');
+  if (!stepper) return;
+  
+  setActiveStep(0);
 
-/* ---------- Navigation Buttons ---------- */
-$('#btn-next').addEventListener('click', ()=>{
-  if (!validateCurrentStep()) return;
-  const last = state.stepOrder.length-1;
-  if (state.currentIndex < last) setActiveStep(state.currentIndex+1);
-  else $('#submit-messages').innerHTML = `<div class="alert success">All steps completed.</div>`;
-});
-$('#btn-back').addEventListener('click', ()=>{ if (state.currentIndex>0) setActiveStep(state.currentIndex-1); });
+  stepper.addEventListener('click', (e)=>{
+    const li = e.target.closest('.step');
+    if(!li) return;
+    const idx = $$('.step', stepper).indexOf(li);
+    if (idx<=state.currentIndex && !li.classList.contains('is-locked')) setActiveStep(idx);
+  });
+  stepper.addEventListener('keydown', (e)=>{
+    if (!e.target.classList.contains('step')) return;
+    const steps = $$('.step', stepper);
+    const i = steps.indexOf(e.target);
+    if (e.key==='ArrowDown' && i<steps.length-1) { steps[i+1].focus(); e.preventDefault(); }
+    if (e.key==='ArrowUp' && i>0) { steps[i-1].focus(); e.preventDefault(); }
+    if ((e.key==='Enter'||e.key===' ') && i<=state.currentIndex) { setActiveStep(i); e.preventDefault(); }
+  });
+}
+
+function initEventListeners(){
+  // Navigation buttons
+  const btnNext = $('#btn-next');
+  const btnBack = $('#btn-back');
+  
+  if (btnNext) {
+    btnNext.addEventListener('click', ()=>{
+      if (!validateCurrentStep()) return;
+      const last = state.stepOrder.length-1;
+      if (state.currentIndex < last) setActiveStep(state.currentIndex+1);
+      else $('#submit-messages').innerHTML = `<div class="alert success">All steps completed.</div>`;
+    });
+  }
+  
+  if (btnBack) {
+    btnBack.addEventListener('click', ()=>{ if (state.currentIndex>0) setActiveStep(state.currentIndex-1); });
+  }
+}
 
 /* ---------- Sidebar mini statuses ---------- */
 function setStatus(stepKey, text, color='var(--muted)'){
@@ -207,12 +232,21 @@ function updateAllStatuses(){
 /* ---------- Case Header dynamic ---------- */
 function updateCaseHeader(){
   const client = `${$('#pi-first')?.value || '—'} ${$('#pi-last')?.value || ''}`.trim() || '—';
-  $('#case-client').textContent = `Client: ${client}`;
+  const caseClientEl = $('#case-client');
+  if (caseClientEl) caseClientEl.textContent = `Client: ${client}`;
+  
   const plan = $('#plan-select')?.value || '—';
-  $('#case-product').textContent = `Product: ${plan}`;
-  $('#summary-plan') && ($('#summary-plan').value = plan);
-  $('#summary-state') && ($('#summary-state').value = $('#pi-state')?.value || '');
-  $('#summary-age') && ($('#summary-age').value = $('#pi-age')?.value || '');
+  const caseProductEl = $('#case-product');
+  if (caseProductEl) caseProductEl.textContent = `Product: ${plan}`;
+  
+  const summaryPlanEl = $('#summary-plan');
+  if (summaryPlanEl) summaryPlanEl.value = plan;
+  
+  const summaryStateEl = $('#summary-state');
+  if (summaryStateEl) summaryStateEl.value = $('#pi-state')?.value || '';
+  
+  const summaryAgeEl = $('#summary-age');
+  if (summaryAgeEl) summaryAgeEl.value = $('#pi-age')?.value || '';
   $('#summary-gender') && ($('#summary-gender').value = $('#pi-gender')?.value || '');
   $('#summary-face') && ($('#summary-face').value = $('#face-amount')?.value || '');
   syncPlanSelectionsToSummary();
@@ -606,6 +640,35 @@ $('#btn-case-actions')?.addEventListener('click', ()=>{
   const menu = $('#case-actions-menu');
   menu.hidden = !menu.hidden;
 });
+
+// Handle menu item clicks
+$('#case-actions-menu')?.addEventListener('click', (e) => {
+  if (e.target.role === 'menuitem') {
+    const action = e.target.getAttribute('data-action');
+    const menu = $('#case-actions-menu');
+    if (menu) menu.hidden = true;
+    
+    switch (action) {
+      case 'duplicate':
+        alert('Duplicate Case functionality would be implemented here');
+        break;
+      case 'delete':
+        if (confirm('Are you sure you want to delete this case?')) {
+          alert('Delete Case functionality would be implemented here');
+        }
+        break;
+      case 'export':
+        window.print();
+        break;
+      case 'clear-cache':
+        if (confirm('This will clear the application cache and reload the page. Continue?')) {
+          window.clearAppCacheAndReload();
+        }
+        break;
+    }
+  }
+});
+
 document.addEventListener('click', (e)=>{
   if (!e.target.closest('#btn-case-actions') && !e.target.closest('#case-actions-menu')) {
     const menu = $('#case-actions-menu'); if (menu) menu.hidden = true;
@@ -745,23 +808,54 @@ function applyMasksToAllFields() {
 }
 
 /* ---------- Initial set ---------- */
-updateCaseHeader();
-renderBeneTable();
-updateAllStatuses();
-renderCases();
-detectTouchBanner();
-updateApplyEsignEnabled();
+// Initialize when DOM is ready
+function initializeApp() {
+  updateCaseHeader();
+  renderBeneTable();
+  updateAllStatuses();
+  renderCases();
+  detectTouchBanner();
+  updateApplyEsignEnabled();
 
-// Ensure modals are hidden initially
-document.addEventListener('DOMContentLoaded', function() {
+  // Ensure modals are hidden initially
   const modal = document.getElementById('notes-modal');
   const drawer = document.getElementById('cases-drawer');
   if (modal) modal.hidden = true;
   if (drawer) drawer.hidden = true;
-});
+  
+  // Add cache clearing functionality
+  window.clearAppCacheAndReload = function() {
+    if ('serviceWorker' in navigator && window.clearAppCache) {
+      window.clearAppCache();
+    } else {
+      // Fallback: clear browser cache and reload
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          Promise.all(keys.map(key => caches.delete(key))).then(() => {
+            window.location.reload(true);
+          });
+        });
+      } else {
+        window.location.reload(true);
+      }
+    }
+  };
+  
+  // Add cache-busting to dynamic requests
+  const originalFetch = window.fetch;
+  window.fetch = function(resource, options = {}) {
+    if (typeof resource === 'string' && resource.includes('./')) {
+      const url = new URL(resource, window.location.origin);
+      url.searchParams.set('_cb', Date.now().toString());
+      resource = url.toString();
+    }
+    return originalFetch(resource, options);
+  };
+}
 
-// Also hide immediately in case DOMContentLoaded already fired
-const modal = document.getElementById('notes-modal');
-const drawer = document.getElementById('cases-drawer');
-if (modal) modal.hidden = true;
-if (drawer) drawer.hidden = true;
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}
