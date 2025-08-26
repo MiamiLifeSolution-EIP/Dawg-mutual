@@ -5,6 +5,9 @@
    - Scroll to step on navigation
    - LocalStorage autosave/restore
    - Service fixes and small UX polish
+   - Added: Case Notes modal, My Cases drawer, Plan risk/tobacco, Pre-Approval trending,
+            Billing initial premium options + amount quoted, HIPAA 10-day copy,
+            Apply eSignature gating (signed city + consent), touch-sign banner
 */
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -25,6 +28,10 @@ const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
     restoreState();
     setActiveStep(state.currentIndex || 0);
     updateAllStatuses();
+    renderCases();
+    detectTouchBanner();
+    syncPlanSelectionsToSummary();
+    updateApplyEsignEnabled();
   }
 
   if (loginBtn) {
@@ -53,7 +60,9 @@ const state = {
   signatures: { hipaaSent: false, appSent: false },
   beneficiaries: [],
   files: [],
-  premium: { annual: 0, semi: 0, quarter: 0, month: 0 }
+  premium: { annual: 0, semi: 0, quarter: 0, month: 0 },
+  cases: [],
+  notes: ''
 };
 
 /* ---------- Helpers ---------- */
@@ -138,6 +147,16 @@ function setActiveStep(i){
   saveState();
   updateAllStatuses();
   const ge = $('#global-error'); if (ge) ge.classList.add('hidden');
+
+  // Sync premium amount into Billing "Amount Quoted" when entering billing
+  if (stepKeyAt(i)==='billing') {
+    $('#amount-quoted') && ($('#amount-quoted').value = money(state.premium.month));
+  }
+  // Update Apply eSignature gating when entering final step
+  if (stepKeyAt(i)==='apply-esign-producer') {
+    detectTouchBanner();
+    updateApplyEsignEnabled();
+  }
 }
 setActiveStep(0);
 
@@ -173,20 +192,15 @@ function setStatus(stepKey, text, color='var(--muted)'){
   el.style.color = color;
 }
 function updateAllStatuses(){
-  // Producer -> no status
   const clientName = `${$('#pi-first')?.value||''} ${$('#pi-last')?.value||''}`.trim();
   setStatus('insured', clientName ? clientName : '');
   setStatus('hipaa-lock', state.locked.hipaa ? '🔒 Locked' : '');
   setStatus('hipaa-method', state.signatures.hipaaSent ? '✉️ Sent' : '');
   setStatus('underwriting', state.uwComplete ? '✓ Completed' : '');
-  // Beneficiaries total
   const total = state.beneficiaries.reduce((s,b)=>s+(parseInt(b.share||'0',10)||0),0);
   if (total>0) setStatus('beneficiaries', `${total}%`, total===100?'#065f46':'#b91c1c'); else setStatus('beneficiaries','');
-  // Premium
   if (state.premium.month>0) setStatus('premium', money(state.premium.month), '#0b5d11'); else setStatus('premium','');
-  // App lock
   setStatus('validate-lock', state.locked.app ? '🔒 Locked' : '');
-  // Signature method
   setStatus('signature-method', state.signatures.appSent ? '✉️ Sent' : '');
 }
 
@@ -201,12 +215,20 @@ function updateCaseHeader(){
   $('#summary-age') && ($('#summary-age').value = $('#pi-age')?.value || '');
   $('#summary-gender') && ($('#summary-gender').value = $('#pi-gender')?.value || '');
   $('#summary-face') && ($('#summary-face').value = $('#face-amount')?.value || '');
+  syncPlanSelectionsToSummary();
   updateAllStatuses();
   saveState();
 }
 document.addEventListener('input', (e)=>{
-  if (['pi-first','pi-last','plan-select','pi-state','pi-gender','face-amount'].includes(e.target.id)) updateCaseHeader();
+  if (['pi-first','pi-last','plan-select','pi-state','pi-gender','face-amount','risk-class','tobacco-status'].includes(e.target.id)) updateCaseHeader();
 });
+
+/* ---------- Sync risk/tobacco to summary ---------- */
+function syncPlanSelectionsToSummary(){
+  const t = $('#tobacco-status')?.value || 'Nontobacco';
+  const summaryT = $('#summary-tobacco');
+  if (summaryT) summaryT.value = t;
+}
 
 /* ---------- Field Logic ---------- */
 $('#pi-dob')?.addEventListener('input', e=>{
@@ -243,6 +265,7 @@ $('#btn-hipaa-send')?.addEventListener('click', ()=>{
   state.signatures.hipaaSent = true;
   $('#hipaa-send-status').textContent = 'Text sent from 1‑844‑307‑6442 with link to sign.';
   updateAllStatuses();
+  renderCases();
   saveState();
 });
 
@@ -343,6 +366,17 @@ $('#btn-find-products')?.addEventListener('click', ()=>{
   const sel = $('#pre-products');
   sel.innerHTML = list.map(p=>`<option>${p}</option>`).join('') || '<option disabled>No products found</option>';
   setStatus('pre-approval', list.length? `${list.length} found` : 'None', list.length?'#0b5d11':'#b91c1c');
+  // Simulate "trending" pre-approval like iGO screens
+  const trend = $('#pre-trending');
+  if (trend) {
+    const chosen = list[0] || '';
+    let label = '';
+    if (/Living Promise/i.test(chosen)) label = 'FAVORABLE – Graded';
+    else if (/Term Life Express/i.test(chosen)) label = 'FAVORABLE – Express';
+    else if (/Indexed/i.test(chosen)) label = 'FAVORABLE – IUL';
+    trend.textContent = label || (list.length ? 'FAVORABLE' : 'NO MATCH');
+    trend.hidden = !list.length;
+  }
   saveState();
 });
 
@@ -354,6 +388,7 @@ $('#btn-complete-medical')?.addEventListener('click', ()=>{
     $('#uw-success').hidden = false;
     $('#medical-status').textContent = 'Questionnaire completed.';
     updateAllStatuses();
+    renderCases();
     saveState();
   }, 1000);
 });
@@ -364,13 +399,9 @@ function updateMedicalQuestions() {
   const termQuestions = $('#term-questions');
   const wholeLifeQuestions = $('#whole-life-questions');
   const iulQuestions = $('#iul-questions');
-  
-  // Hide all product-specific questions first
   if (termQuestions) termQuestions.style.display = 'none';
   if (wholeLifeQuestions) wholeLifeQuestions.style.display = 'none';
   if (iulQuestions) iulQuestions.style.display = 'none';
-  
-  // Show relevant questions based on product type
   if (selectedPlan.includes('Term Life')) {
     if (termQuestions) termQuestions.style.display = 'block';
   } else if (selectedPlan.includes('Whole Life') || selectedPlan.includes('Living Promise')) {
@@ -379,23 +410,15 @@ function updateMedicalQuestions() {
     if (iulQuestions) iulQuestions.style.display = 'block';
   }
 }
-
-// Update medical questions when plan selection changes
 $('#plan-select')?.addEventListener('change', updateMedicalQuestions);
-
-// Initialize medical questions on page load
 document.addEventListener('DOMContentLoaded', ()=>{
   updateMedicalQuestions();
-  
-  // Handle pre-selected product from landing pages
   const selectedProduct = sessionStorage.getItem('selectedProduct');
   const applicantName = sessionStorage.getItem('applicantName');
-  
   if (selectedProduct && $('#plan-select')) {
     $('#plan-select').value = selectedProduct;
-    updateMedicalQuestions(); // Update questions based on pre-selected product
+    updateMedicalQuestions();
   }
-  
   if (applicantName) {
     const [first, ...lastParts] = applicantName.split(' ');
     const last = lastParts.join(' ');
@@ -408,26 +431,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
 $('#btn-calc-premium')?.addEventListener('click', ()=>{
   const face = parseMoney($('#face-amount')?.value || $('#summary-face')?.value);
   const age = parseInt($('#pi-age')?.value||'45',10);
-  const tobacco = $('#summary-tobacco')?.value === 'Tobacco';
+  const tobacco = ($('#summary-tobacco')?.value || $('#tobacco-status')?.value) === 'Tobacco';
   const selectedPlan = $('#plan-select')?.value || '';
-  
-  // Product-specific rate calculation
+  const risk = ($('#risk-class')?.value || 'Standard').toLowerCase();
   let baseRate;
   if (selectedPlan.includes('Term Life')) {
-    // Term life rates - lowest cost
     baseRate = Math.max(0.60, Math.min(1.50, 0.75 + (age-35)*0.015 + (tobacco?0.35:0)));
   } else if (selectedPlan.includes('Whole Life') || selectedPlan.includes('Living Promise')) {
-    // Whole life rates - higher cost, builds cash value
     baseRate = Math.max(1.20, Math.min(3.50, 1.80 + (age-35)*0.025 + (tobacco?0.55:0)));
   } else if (selectedPlan.includes('Universal Life') || selectedPlan.includes('IUL')) {
-    // IUL rates - moderate cost, investment component
     baseRate = Math.max(0.95, Math.min(2.80, 1.35 + (age-35)*0.020 + (tobacco?0.45:0)));
   } else {
-    // Default calculation
     baseRate = Math.max(0.75, Math.min(1.85, 0.9 + (age-35)*0.02 + (tobacco?0.25:0)));
   }
-  
-  const annual = (face/1000) * (baseRate*12*1.15);
+  // Risk class adjustment
+  const riskAdj = risk==='preferred' ? 0.9 : risk==='substandard' ? 1.2 : 1.0;
+  const annual = (face/1000) * (baseRate*12*1.15) * riskAdj;
   const monthly = annual/12;
   const semi = annual/2 * 1.02;
   const quarter = annual/4 * 1.03;
@@ -436,6 +455,7 @@ $('#btn-calc-premium')?.addEventListener('click', ()=>{
   $('#prem-semi').textContent = money(semi);
   $('#prem-quarter').textContent = money(quarter);
   $('#prem-month').textContent = money(monthly);
+  $('#amount-quoted') && ($('#amount-quoted').value = money(monthly));
   updateAllStatuses();
   saveState();
 });
@@ -448,6 +468,7 @@ $('#btn-lock-app')?.addEventListener('click', ()=>{
   $('#btn-unlock-app').hidden = false;
   setFormEnabled(false);
   updateAllStatuses();
+  renderCases();
   saveState();
 });
 $('#btn-unlock-app')?.addEventListener('click', ()=>{
@@ -457,6 +478,7 @@ $('#btn-unlock-app')?.addEventListener('click', ()=>{
   $('#btn-unlock-app').hidden = true;
   setFormEnabled(true);
   updateAllStatuses();
+  renderCases();
   saveState();
 });
 function setFormEnabled(enabled){
@@ -503,6 +525,7 @@ $('#btn-send-sign')?.addEventListener('click', ()=>{
   state.signatures.appSent = true;
   $('#sig-send-status').textContent = 'Signature links sent. You will receive an alert when completed.';
   updateAllStatuses();
+  renderCases();
   saveState();
 });
 
@@ -565,7 +588,6 @@ function validateCurrentStep(){
 
   if (!ok) {
     showGlobalError(messages);
-    // scroll to first error input if exists
     const firstError = view.querySelector('.error');
     firstError?.scrollIntoView({behavior:'smooth', block:'center'});
   } else {
@@ -578,14 +600,8 @@ function showGlobalError(messages){
   ge.innerHTML = 'Please address the following:<ul style="margin:.4rem 0 .2rem 1rem">' + messages.map(m=>`<li>${m}</li>`).join('') + '</ul>';
   ge.classList.remove('hidden');
 }
-function appendBanner(view, msg, type){
-  let banner = $('.inline-banner', view);
-  if (!banner) { banner = document.createElement('div'); banner.className = 'alert inline-banner'; view.prepend(banner); }
-  banner.className = `alert inline-banner ${type==='error'?'error':type==='warn'?'warn':'info'}`;
-  banner.textContent = msg;
-}
 
-/* ---------- Case Actions menu ---------- */
+/* ---------- Case Actions & Notes ---------- */
 $('#btn-case-actions')?.addEventListener('click', ()=>{
   const menu = $('#case-actions-menu');
   menu.hidden = !menu.hidden;
@@ -595,17 +611,84 @@ document.addEventListener('click', (e)=>{
     const menu = $('#case-actions-menu'); if (menu) menu.hidden = true;
   }
 });
+$('#btn-view-forms')?.addEventListener('click', ()=>{ window.print(); });
+
+$('#btn-case-notes')?.addEventListener('click', ()=>{
+  $('#notes-text').value = state.notes || '';
+  $('#notes-modal').hidden = false;
+});
+$('#btn-notes-cancel')?.addEventListener('click', ()=>{ $('#notes-modal').hidden = true; });
+$('#btn-notes-save')?.addEventListener('click', ()=>{
+  state.notes = $('#notes-text').value;
+  $('#notes-modal').hidden = true;
+  saveState();
+});
+$('#btn-notes-insert')?.addEventListener('click', ()=>{
+  const d = new Date();
+  const stamp = d.toLocaleString();
+  const ta = $('#notes-text');
+  ta.value = (ta.value? ta.value+'\n':'') + `[${stamp}] `;
+});
+
+/* ---------- My Cases Drawer ---------- */
+document.querySelector('[data-action="cases"]')?.addEventListener('click', ()=>{
+  renderCases();
+  $('#cases-drawer').hidden = false;
+});
+$('#btn-close-cases')?.addEventListener('click', ()=>{ $('#cases-drawer').hidden = true; });
+
+function deriveCaseStatus(){
+  if (state.locked.app) return 'Application Locked';
+  if (state.locked.hipaa && !state.signatures.hipaaSent) return 'Locked – Awaiting HIPAA eSignature';
+  if (!state.locked.hipaa) return 'Started';
+  if (state.signatures.appSent) return 'Awaiting Consumer e‑Signature';
+  if (state.uwComplete) return 'Underwriting Completed';
+  return 'In Progress';
+}
+function renderCases(){
+  const list = $('#cases-list'); if (!list) return;
+  const client = `${$('#pi-last')?.value||'—'}, ${$('#pi-first')?.value||''}`.trim();
+  const product = $('#plan-select')?.value || '—';
+  const status = deriveCaseStatus();
+  const modified = new Date().toLocaleDateString();
+  list.innerHTML = `
+    <div class="case-row">
+      <div>
+        <div><strong>${client || 'Unnamed'}</strong></div>
+        <div class="small-muted">${product}</div>
+        <div class="small-muted">Date Modified: ${modified}</div>
+      </div>
+      <div><span class="badge ${/Awaiting|Locked/.test(status)?'warn':/Completed|Locked/.test(status)?'ok':'info'}">${status}</span></div>
+    </div>
+  `;
+}
 
 /* ---------- Auto-populate Premium Summary from Plan step ---------- */
-['face-amount','pi-state','pi-gender'].forEach(id=>{
+['face-amount','pi-state','pi-gender','tobacco-status'].forEach(id=>{
   const el = $('#'+id);
   el?.addEventListener('input', ()=>{
     $('#summary-face') && ($('#summary-face').value = $('#face-amount')?.value || '');
     $('#summary-state') && ($('#summary-state').value = $('#pi-state')?.value || '');
     $('#summary-gender') && ($('#summary-gender').value = $('#pi-gender')?.value || '');
+    $('#summary-tobacco') && ($('#summary-tobacco').value = $('#tobacco-status')?.value || 'Nontobacco');
     saveState();
   });
 });
+
+/* ---------- Apply eSignature Gating + touch detect ---------- */
+function detectTouchBanner(){
+  const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints>0;
+  const banner = $('#touch-detect');
+  if (banner) banner.hidden = !isTouch;
+}
+function updateApplyEsignEnabled(){
+  const cityOk = !!$('#signed-city')?.value.trim();
+  const consentOk = !!$('#welcome-consent-check')?.checked;
+  const btn = $('#btn-apply-esign');
+  if (btn) btn.disabled = !(cityOk && consentOk);
+}
+$('#signed-city')?.addEventListener('input', updateApplyEsignEnabled);
+$('#welcome-consent-check')?.addEventListener('change', updateApplyEsignEnabled);
 
 /* ---------- Persistence ---------- */
 const STORAGE_KEY = 'dawgcheck-app-state-v2';
@@ -642,7 +725,6 @@ function restoreState(){
     }
     if (payload?.state) {
       Object.assign(state, payload.state);
-      // Re-render dynamic bits
       renderFiles();
       renderBeneTable();
     }
@@ -653,3 +735,6 @@ function restoreState(){
 updateCaseHeader();
 renderBeneTable();
 updateAllStatuses();
+renderCases();
+detectTouchBanner();
+updateApplyEsignEnabled();
