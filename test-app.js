@@ -9,6 +9,8 @@ try {
         querySelector: () => null,
         querySelectorAll: () => [],
         addEventListener: () => {},
+        getElementById: () => null,
+        readyState: 'complete'
     };
     global.window = {};
     global.localStorage = {
