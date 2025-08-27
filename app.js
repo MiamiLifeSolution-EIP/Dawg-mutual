@@ -34,7 +34,7 @@ const state = {
 };
 
 /* ---------- Simple View Router (Login -> App) ---------- */
-(function initViews(){
+function initViews(){
   const loginView = document.querySelector('[data-view="login"]');
   const appView = document.querySelector('[data-view="home"]');
   const loginBtn = $('#btn-login');
@@ -56,21 +56,35 @@ const state = {
     updateApplyEsignEnabled();
   }
 
+  // Ensure login view is shown by default and app view is hidden
+  if (loginView) loginView.hidden = false;
+  if (appView) appView.hidden = true;
+
+  // Only attach event listener if login button exists
   if (loginBtn) {
     loginBtn.addEventListener('click', () => {
-      const first = ($('#login-first')?.value || '').trim();
-      const last  = ($('#login-last')?.value || '').trim();
+      const firstNameInput = $('#login-first');
+      const lastNameInput = $('#login-last');
+      
+      if (!firstNameInput || !lastNameInput) {
+        console.error('Login form inputs not found');
+        return;
+      }
+      
+      const first = (firstNameInput.value || '').trim();
+      const last = (lastNameInput.value || '').trim();
+      
+      if (!first || !last) {
+        alert('Please enter both first and last name');
+        return;
+      }
+      
       gotoApp(first, last);
     });
   } else {
-    // Defer initialization until DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => gotoApp('', ''));
-    } else {
-      gotoApp('', '');
-    }
+    console.warn('Login button not found - app may not load correctly');
   }
-})();
+}
 
 /* ---------- Helpers ---------- */
 const STATES = [
@@ -170,7 +184,10 @@ function setActiveStep(i){
 
 function initStepper(){
   const stepper = $('#step-list');
-  if (!stepper) return;
+  if (!stepper) {
+    console.error('Stepper element not found - app may not function correctly');
+    return;
+  }
   
   setActiveStep(0);
 
@@ -810,6 +827,9 @@ function applyMasksToAllFields() {
 /* ---------- Initial set ---------- */
 // Initialize when DOM is ready
 function initializeApp() {
+  // Initialize views first to ensure proper login flow
+  initViews();
+  
   updateCaseHeader();
   renderBeneTable();
   updateAllStatuses();
